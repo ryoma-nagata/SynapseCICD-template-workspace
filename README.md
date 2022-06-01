@@ -25,7 +25,7 @@ reference: https://techcommunity.microsoft.com/t5/data-architecture-blog/ci-cd-i
 ![](.image/2022-06-01-13-54-15.png)
 
 3. Clone this repositry to Azure DevOps Repos
-4. Configuration Synapse Analytics Git integration.
+4. Configure Synapse Analytics Git integration.
 5. Prep TemplateParametersForWorkspace_stg.json
 6. Create and run DevOps pipeline 
    1. CI/CD flow in same pipline
