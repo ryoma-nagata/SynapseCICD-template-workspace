@@ -1,0 +1,59 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  # none
+  branches:
+    include:
+      - 'main'
+      - 'master'
+  paths:
+    exclude:
+      - .ado/*
+pr:
+  none
+
+
+variables:
+  - name: ARTIFACTS_FOLDER
+    value: "./synapse" # Update to '{yourResourceManagerConnectionName}'
+
+stages:
+  - stage: PublishArtifact
+    displayName: "PublishArtifact "
+    jobs:
+      - job: PublishArtifact
+        displayName: "PublishArtifact "
+        continueOnError: false
+        pool:
+          vmImage: "ubuntu-latest"
+        steps:
+          # Checkout code
+          - checkout: self
+            name: checkout_repository
+            displayName: Checkout repository
+            submodules: true
+            lfs: false
+            clean: true
+            continueOnError: false
+            enabled: true
+          - task: Synapse workspace deployment@2
+            inputs:
+              TargetWorkspaceName: 'dev'
+              ArtifactsFolder: $(ARTIFACTS_FOLDER)
+              operation: 'validate'
+          - task: CopyFiles@2
+            displayName: 'Copy Files to:  $(build.artifactstagingdirectory)'
+            inputs:
+              Contents: |
+                ExportedArtifacts/*
+                TemplateParametersForWorkspace*.json
+              flattenFolders: true
+              TargetFolder: ' $(build.artifactstagingdirectory)'
+
+          - publish: ' $(build.artifactstagingdirectory)'
+            displayName: 'Publish synapse'
+            artifact: 'synapse_template'
+

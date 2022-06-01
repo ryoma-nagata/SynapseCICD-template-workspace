@@ -1,0 +1,103 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+  none
+
+
+variables:
+  - name: CI_PIPELINE_ID
+    value: "26"
+  - name: PROJECT_NAME
+    value: "SynapseCICDDemo"
+  - name: AZURE_RESOURCE_MANAGER_CONNECTION_NAME
+    value: "azure-devops-service-connection" # Update to '{yourResourceManagerConnectionName}'
+  - name: TARGET_WORKSPACE_NAME_STG
+    value: ""
+  - name: TARGET_RESOURCE_GROUP_NAME_STG
+    value: ""
+
+stages:
+  - stage: Deployment_STG
+    displayName: "Deployment STG"
+
+    # condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI'))
+    jobs:
+    - deployment: DeployToSTG
+      displayName: "Synapse Deployment"
+      continueOnError: false
+      pool:
+        vmImage: "windows-latest"
+      environment: STG #配置先環境により変更する
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - task: DownloadPipelineArtifact@2
+              inputs:
+                source: 'specific'
+                project: $(PROJECT_NAME) 
+                pipeline: $(CI_PIPELINE_ID)
+                artifactName: 'synapse_template'
+                targetPath: $(Pipeline.Workspace)/synapse_template
+                runVersion: 'latest'
+            - task: AzurePowerShell@5
+              displayName: 'Allow Azure DevOps Agent Ip'
+              inputs:
+                azureSubscription: $(AZURE_RESOURCE_MANAGER_CONNECTION_NAME)
+                ScriptType: 'InlineScript'
+                azurePowerShellVersion: 'LatestVersion'
+                errorActionPreference: 'continue'
+                Inline: |
+                  # You can write your azure powershell scripts inline here. 
+                  # You can also pass predefined and custom variables to this script using arguments
+                  # Install-Module -Name "Az.Synapse" -Confirm:$false  -Scope CurrentUser  -Force
+                  $ADO_Agent_IP = (Invoke-RestMethod http://ipinfo.io/json | Select -exp ip)
+                  New-AzSynapseFirewallRule -WorkspaceName "$(TARGET_WORKSPACE_NAME_STG)" -Name ADO_Agent_IP -StartIpAddress $ADO_Agent_IP -EndIpAddress $ADO_Agent_IP
+                  Start-Sleep -Seconds 30
+                  Get-AzSynapseFirewallRule -WorkspaceName "$(TARGET_WORKSPACE_NAME_STG)"
+
+            - task: toggle-triggers-dev@2
+              displayName: 'Stop triggers'
+              inputs:
+                azureSubscription: $(AZURE_RESOURCE_MANAGER_CONNECTION_NAME)
+                ResourceGroupName: $(TARGET_RESOURCE_GROUP_NAME_STG)
+                WorkspaceName: $(TARGET_WORKSPACE_NAME_STG)
+                ToggleOn: false
+            #     Triggers: '*'
+                
+            - task: Synapse workspace deployment@2
+              inputs:
+                TemplateFile: $(Pipeline.Workspace)/synapse_template/TemplateForWorkspace.json
+                ParametersFile: $(Pipeline.Workspace)/synapse_template/TemplateParametersForWorkspace_stg.json
+                azureSubscription: $(AZURE_RESOURCE_MANAGER_CONNECTION_NAME)
+                ResourceGroupName: $(TARGET_RESOURCE_GROUP_NAME_STG)
+                TargetWorkspaceName: $(TARGET_WORKSPACE_NAME_STG)
+                DeleteArtifactsNotInTemplate: true
+                Environment: 'prod'
+                DeployManagedPrivateEndpoints: false
+
+            - task: toggle-triggers-dev@2
+              displayName: 'Restart triggers'
+              condition: always()
+              inputs:
+                azureSubscription: $(AZURE_RESOURCE_MANAGER_CONNECTION_NAME)
+                ResourceGroupName: $(TARGET_RESOURCE_GROUP_NAME_STG)
+                WorkspaceName: $(TARGET_WORKSPACE_NAME_STG)
+                ToggleOn: true
+                Triggers: '*'
+                
+            - task: AzurePowerShell@5
+              displayName: 'Remove Azure DevOps Agent Ip'
+              condition: always()
+              inputs:
+                azureSubscription: $(AZURE_RESOURCE_MANAGER_CONNECTION_NAME)
+                ScriptType: 'InlineScript'
+                azurePowerShellVersion: 'LatestVersion'
+                Inline: |
+                  # You can write your azure powershell scripts inline here. 
+                  # You can also pass predefined and custom variables to this script using arguments
+                  # Install-Module -Name "Az.Synapse" -Confirm:$false  -Scope CurrentUser  -Force
+                  Remove-AzSynapseFirewallRule -WorkspaceName "$(TARGET_WORKSPACE_NAME_STG)" -Name ADO_Agent_IP -Force
