@@ -62,9 +62,9 @@ stages:
             displayName: 'Publish synapse'
             artifact: 'synapse_template'
 
-- stage: Deployment_STG
+  - stage: Deployment_STG
     displayName: "Deployment STG"
-
+    dependsOn: PublishArtifact
     # condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI'))
     jobs:
     - deployment: DeployToSTG

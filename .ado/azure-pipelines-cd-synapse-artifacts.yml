@@ -9,9 +9,9 @@ trigger:
 
 variables:
   - name: CI_PIPELINE_ID
-    value: "26"
+    value: ""
   - name: PROJECT_NAME
-    value: "SynapseCICDDemo"
+    value: ""
   - name: AZURE_RESOURCE_MANAGER_CONNECTION_NAME
     value: "azure-devops-service-connection" # Update to '{yourResourceManagerConnectionName}'
   - name: TARGET_WORKSPACE_NAME_STG
