@@ -5,7 +5,11 @@
 
 trigger:
   none
-
+  
+resources:
+  pipelines:
+  - pipeline: ciartifacts
+    source: arm-template-ci-dev  # update your ci pipeline name
 
 variables:
   - name: CI_PIPELINE_ID
@@ -70,8 +74,8 @@ stages:
                 
             - task: Synapse workspace deployment@2
               inputs:
-                TemplateFile: $(Pipeline.Workspace)/synapse_template/TemplateForWorkspace.json
-                ParametersFile: $(Pipeline.Workspace)/synapse_template/TemplateParametersForWorkspace_stg.json
+                TemplateFile: ciartifacts/TemplateForWorkspace.json
+                ParametersFile: ciartifacts/TemplateParametersForWorkspace_stg.json
                 azureSubscription: $(AZURE_RESOURCE_MANAGER_CONNECTION_NAME)
                 ResourceGroupName: $(TARGET_RESOURCE_GROUP_NAME_STG)
                 TargetWorkspaceName: $(TARGET_WORKSPACE_NAME_STG)
