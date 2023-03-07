@@ -4,29 +4,34 @@
 # https://aka.ms/yaml
 
 trigger:
+  # none
+  branches:
+    include:
+      - 'main'
+      - 'master'
+  paths:
+    exclude:
+      - .ado/*
+pr:
   none
-  
+
 resources:
   pipelines:
   - pipeline: ciartifacts
-    source: arm-template-ci-dev  # update your ci pipeline name
+    source: ci-synapse  # update source pipeline name
 
 variables:
-  - name: CI_PIPELINE_ID
-    value: ""
-  - name: PROJECT_NAME
-    value: ""
+  - name: ARTIFACTS_FOLDER
+    value: "./synapse" 
   - name: AZURE_RESOURCE_MANAGER_CONNECTION_NAME
-    value: "azure-devops-service-connection" # Update to '{yourResourceManagerConnectionName}'
+    value: "azure-devops-service-connection"
   - name: TARGET_WORKSPACE_NAME_STG
     value: ""
   - name: TARGET_RESOURCE_GROUP_NAME_STG
     value: ""
-
 stages:
   - stage: Deployment_STG
     displayName: "Deployment STG"
-
     # condition: and(succeeded(), in(variables['Build.Reason'], 'IndividualCI', 'BatchedCI'))
     jobs:
     - deployment: DeployToSTG
@@ -39,14 +44,7 @@ stages:
         runOnce:
           deploy:
             steps:
-            - task: DownloadPipelineArtifact@2
-              inputs:
-                source: 'specific'
-                project: $(PROJECT_NAME) 
-                pipeline: $(CI_PIPELINE_ID)
-                artifactName: 'synapse_template'
-                targetPath: $(Pipeline.Workspace)/synapse_template
-                runVersion: 'latest'
+
             - task: AzurePowerShell@5
               displayName: 'Allow Azure DevOps Agent Ip'
               inputs:
@@ -74,8 +72,8 @@ stages:
                 
             - task: Synapse workspace deployment@2
               inputs:
-                TemplateFile: ciartifacts/TemplateForWorkspace.json
-                ParametersFile: ciartifacts/TemplateParametersForWorkspace_stg.json
+                TemplateFile: $(Pipeline.Workspace)/ciartifacts/synapse_template/TemplateForWorkspace.json
+                ParametersFile: $(Pipeline.Workspace)/ciartifacts/synapse_template/TemplateParametersForWorkspace_stg.json
                 azureSubscription: $(AZURE_RESOURCE_MANAGER_CONNECTION_NAME)
                 ResourceGroupName: $(TARGET_RESOURCE_GROUP_NAME_STG)
                 TargetWorkspaceName: $(TARGET_WORKSPACE_NAME_STG)
